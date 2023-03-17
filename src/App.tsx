@@ -9,6 +9,7 @@ function App() {
   async function consumerFetchChatAPI() {
     try {
       if (input.length <= 0) return;
+      setData([]);
       const API_CHAT_GPT = import.meta.env.VITE_API_CHAT_GPT;
       setStatusRequest(true);
       const requestAPIChatGPT = await fetch(
