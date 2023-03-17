@@ -1,5 +1,6 @@
 import { Spinner } from "phosphor-react";
 import { ChangeEvent, useState } from "react";
+
 function App() {
   const [data, setData] = useState<string[]>([]);
   const [input, setInput] = useState<string>("");
