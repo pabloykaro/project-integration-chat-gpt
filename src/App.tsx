@@ -2,14 +2,12 @@ import { Spinner } from "phosphor-react";
 import { ChangeEvent, useState } from "react";
 
 function App() {
-  const [data, setData] = useState<string[]>([]);
-  const [input, setInput] = useState<string>("");
+  const [message, setMessage] = useState<string[]>([]);
+  const [ask, setAsk] = useState<string>("");
   const [statusRequest, setStatusRequest] = useState<boolean>(false);
 
-  async function consumerFetchChatAPI() {
+  async function consumerGptAPI() {
     try {
-      if (input.length <= 0) return;
-      setData([]);
       const API_CHAT_GPT = import.meta.env.VITE_API_CHAT_GPT;
       setStatusRequest(true);
       const requestAPIChatGPT = await fetch(
@@ -22,7 +20,7 @@ function App() {
           },
           body: JSON.stringify({
             model: "text-davinci-003",
-            prompt: `${input}. formato o texto com quebras de linhas por paragrafos gerado no texto.`,
+            prompt: `${ask}. formato o texto com quebras de linhas por paragrafos gerado no texto.`,
             top_p: 1,
             max_tokens: 500,
             temperature: 0.22,
@@ -31,10 +29,8 @@ function App() {
           }),
         }
       );
-      requestAPIChatGPT.body
-        ?.pipeThrough(new TextDecoderStream())
-        .pipeThrough(transformData())
-        .pipeTo(returnStream());
+      const reader = requestAPIChatGPT.body;
+      return reader;
     } catch (err) {
       console.warn(err);
     } finally {
@@ -42,7 +38,7 @@ function App() {
     }
   }
 
-  function transformData() {
+  function transformationLayerData() {
     let bufferData = "";
     return new TransformStream({
       transform(chunk, controller) {
@@ -60,15 +56,15 @@ function App() {
       },
     });
   }
-  function returnStream() {
+  function defineTheMessagesReceived() {
     return new WritableStream({
       write: (data) => {
-        setData((dataOld) => [...dataOld, data]);
+        setMessage((messageOld) => [...messageOld, data]);
       },
     });
   }
 
-  function autoResize(textarea: HTMLTextAreaElement) {
+  function autoResizeMessage(textarea: HTMLTextAreaElement) {
     if (textarea.value.trim() === "") {
       textarea.style.height = "auto";
       return;
@@ -77,11 +73,19 @@ function App() {
   }
 
   function validateInputEnter() {
-    if (!input) return true;
+    if (!ask) return true;
     if (statusRequest) return true;
     return false;
   }
 
+  async function handledSearch() {
+    if (ask.trim() === "") return;
+    const readableResponse = await consumerGptAPI();
+    readableResponse
+      ?.pipeThrough(new TextDecoderStream())
+      .pipeThrough(transformationLayerData())
+      .pipeTo(defineTheMessagesReceived());
+  }
   return (
     <div className="flex flex-col gap-10 items-center w-screen h-screen">
       <article
@@ -89,7 +93,7 @@ function App() {
         className="flex flex-col mt-10  gap-1 max-w-2xl w-full flex-wrap text-left"
       >
         {statusRequest ? (
-          <div aria-label="Carregando" className="m-auto p-auto">
+          <div aria-label="Aguardando resposta" className="m-auto p-auto">
             <Spinner className="animate-spin" color="#000000" size={32} />
           </div>
         ) : (
@@ -97,10 +101,10 @@ function App() {
             Conte conosco para tirar suas dúvidas
           </h1>
         )}
-        {data.map((elemento, indice) => {
+        {message.map((response, index) => {
           return (
-            <span className="text-black" key={indice + 1}>
-              {elemento}
+            <span className="text-black" key={index + 1}>
+              {response}
             </span>
           );
         })}
@@ -110,14 +114,14 @@ function App() {
           className="w-full p-4  resize-none  ring-1 ring-highlight hover:ring-2 text-black bg-card-background outline-none rounded"
           placeholder="Digite à sua pergunta"
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
-            setInput(e.target.value);
-            autoResize(e.target);
+            setAsk(e.target.value);
+            autoResizeMessage(e.target);
           }}
         />
         <button
           disabled={validateInputEnter()}
           className="w-full ring-2 ring-highlight disabled:cursor-not-allowed  text-black   h-10 rounded font-bold  hover:bg-highlight focus:bg-highlight"
-          onClick={consumerFetchChatAPI}
+          onClick={handledSearch}
         >
           Enviar
         </button>
